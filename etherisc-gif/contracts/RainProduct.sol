@@ -178,12 +178,13 @@ contract RainProduct is Product {
                 insuredAmount
             );
 
+            //TODO: quando usado dá um erro brownie.exceptions.VirtualMachineError: revert
             // bytes memory queryData = abi.encode(
             //     risk.startDate,
             //     risk.endDate,
             //     risk.lat,
             //     risk.long
-            // );
+            // ); 
 
             bytes memory queryData = abi.encode(objectName);
 
