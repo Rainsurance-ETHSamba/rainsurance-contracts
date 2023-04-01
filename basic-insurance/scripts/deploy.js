@@ -7,21 +7,38 @@
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
 
-  const lockedAmount = hre.ethers.utils.parseEther("0.001");
-
-  const Lock = await hre.ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-
-  await lock.deployed();
+  const UsdcFactory = await hre.ethers.getContractFactory("Usdc");
+  const usdc = await UsdcFactory.deploy();
+  await usdc.deployed();
 
   console.log(
-    `Lock with ${ethers.utils.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
+    `Usdc deployed to ${usdc.address}`
   );
+  
+  const RainInsuranceFactory = await hre.ethers.getContractFactory("RainInsurance");
+  const rainInsurance = await RainInsuranceFactory.deploy(usdc.address);
+  await rainInsurance.deployed();
+
+  console.log(
+    `RainInsurance deployed to ${rainInsurance.address}`
+  );
+
+  const funding = hre.ethers.utils.parseUnits("1000000", 6);
+
+  usdc.transfer(rainInsurance.address, funding);
+
+  console.log(
+    `${ethers.utils.formatUnits(funding, 6)} USDC funded to ${rainInsurance.address}`
+  );
+
+//   Usdc deployed to 0x8873a4e84C0AD3FD56eBcbA4FB19f13fDe1586BC
+//   RainInsurance deployed to 0x2bcA53f3EeB12B758A0D241a213C6107224549bA
+//   1000000.0 USDC funded to 0x2bcA53f3EeB12B758A0D241a213C6107224549bA
+
+// https://mumbai.polygonscan.com/address/0x8873a4e84C0AD3FD56eBcbA4FB19f13fDe1586BC#code
+// https://mumbai.polygonscan.com/address/0x2bcA53f3EeB12B758A0D241a213C6107224549bA#code
+  
 }
 
 // We recommend this pattern to be able to use async/await everywhere
