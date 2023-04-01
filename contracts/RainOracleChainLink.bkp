@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.8.2;
+
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
+import "@etherisc/gif-interface/contracts/components/Oracle.sol";
+
+contract RainOracle is Oracle, ChainlinkClient {
+
+    using Chainlink for Chainlink.Request;
+    
+    mapping(bytes32 /* Chainlink request ID */ => uint256 /* GIF request ID */) public gifRequests;
+    bytes32 public jobId;
+    uint256 public payment;
+
+    event LogRainOracleRequest(
+        uint256 requestId, 
+        bytes32 chainlinkRequestId
+    );
+
+    constructor(
+        bytes32 oracleName,
+        address registry
+        // address _chainLinkToken,
+        // address _chainLinkOperator,
+        // bytes32 _jobId,
+        // uint256 _payment
+    )
+        Oracle(oracleName, registry)
+    { 
+        // updateRequestDetails(
+        //     _chainLinkToken, 
+        //     _chainLinkOperator, 
+        //     _jobId, 
+        //     _payment);
+    }
+
+    function updateRequestDetails(
+        address _chainLinkToken,
+        address _chainLinkOperator,
+        bytes32 _jobId,
+        uint256 _payment
+    ) 
+        public 
+        onlyOwner 
+    {
+        if (_chainLinkToken != address(0)) { setChainlinkToken(_chainLinkToken); }
+        if (_chainLinkOperator != address(0)) { setChainlinkOracle(_chainLinkOperator); }
+        
+        jobId = _jobId;
+        payment = _payment;
+    }
+
+    // is called by a product to request data from an oracle by an oracle type.
+    // prepares the oracle call.
+    function request(uint256 requestId, bytes calldata input) 
+        external 
+        override 
+        onlyQuery
+    {
+
+        Chainlink.Request memory request_ = buildChainlinkRequest(
+            jobId,
+            address(this),
+            this.fulfill.selector
+        );
+
+        (
+            uint256 startDate, 
+            uint256 endDate, 
+            string memory lat,
+            string memory long
+        ) = abi.decode(input, (uint256, uint256, string, string));
+
+        request_.add("startDate", Strings.toString(startDate));
+        request_.add("endDate", Strings.toString(endDate));
+        request_.add("lat", lat);
+        request_.add("long", long);
+
+        bytes32 chainlinkRequestId = sendChainlinkRequest(request_, payment);
+
+        gifRequests[chainlinkRequestId] = requestId;
+
+        emit LogRainOracleRequest(requestId, chainlinkRequestId);
+    }
+
+    function cancel(uint256 requestId) external override {
+        // nothing to implement for this demo case
+    }
+
+    function fulfill(
+        bytes32 chainlinkRequestId, 
+        bytes32 projectId, 
+        bytes32 uaiId, 
+        bytes32 cropId, 
+        uint256 aaay
+    )
+        public recordChainlinkFulfillment(chainlinkRequestId) 
+    {
+        //TODO: implement
+    }
+
+    // is called by the Oracle Service after an oracle response to respond to the request of a product
+    function respond(uint256 requestId, bytes1 fireCategory) 
+        external
+    {
+        // input validation
+        require(
+            (fireCategory == 'S') || 
+            (fireCategory == 'M') || 
+            (fireCategory == 'L'), 
+            "fire category not in (S,M,L)");
+
+        // encode oracle output (response) data and
+        // trigger inherited response handling
+        bytes memory output = abi.encode(fireCategory);
+        _respond(requestId, output);
+    }
+}
