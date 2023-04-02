@@ -83,8 +83,23 @@ contract RainInsurance is ChainlinkClient, ConfirmedOwner {
             address(this),
             this.fulfill.selector
         );
+        string memory requestUrl = prepareRequest(lat, long, startdate, enddate, precipitation);
+        req.add(
+            "get",
+            requestUrl
+        );
+        req.add("path", "result");
+        return sendChainlinkRequest(req, fee);
+    }
 
-        string memory requestUrl = string(abi.encodePacked(
+    function prepareRequest(
+            string memory lat,
+            string memory long,
+            uint256 startdate,
+            uint256 enddate,
+            uint256 precipitation
+    ) public pure returns (string memory requestUrl) {
+        requestUrl = string(abi.encodePacked(
             "https://rainsurance.org/api/weather?startdate=",
             Strings.toString(startdate),
             "&enddate=",
@@ -96,16 +111,6 @@ contract RainInsurance is ChainlinkClient, ConfirmedOwner {
             "&precipitation=",
             Strings.toString(precipitation)
         ));
-
-        console.log("requestUrl: %s", requestUrl);
-
-        req.add(
-            "get",
-            requestUrl
-        );
-
-        // Sends the request
-        return sendChainlinkRequest(req, fee);
     }
 
     /**
@@ -126,7 +131,11 @@ contract RainInsurance is ChainlinkClient, ConfirmedOwner {
             bool success = usdcToken.transfer(policyHolder, policy.insuredAmount);
             require(success, "Claim payment failed");
 
-            _expirePolicy(policy.policyId);
+            delete policies[policy.policyId];
+            delete policyHolders[policy.policyId];
+
+            delete addressPolicies[policyHolder];
+            addressPoliciesCount[policyHolder] -= 1;
 
             status = "approved";
 
@@ -189,19 +198,6 @@ contract RainInsurance is ChainlinkClient, ConfirmedOwner {
         bytes32 requestId = requestData(policy.lat, policy.long, policy.startDate, policy.endDate, policy.precipitation);
 
         claims[requestId] = policy.policyId;
-    }
-
-    function expirePolicy(uint256 policyId) public onlyOwner {
-        _expirePolicy(policyId);
-    }
-
-    function _expirePolicy(uint256 policyId) private {
-        address policyHolder = policyHolders[policyId];
-        delete policies[policyId];
-        delete policyHolders[policyId];
-
-        delete addressPolicies[policyHolder];
-        addressPoliciesCount[policyHolder] -= 1;
     }
 
     function getPolicy(uint256 policyId) public view returns (Policy memory) {
