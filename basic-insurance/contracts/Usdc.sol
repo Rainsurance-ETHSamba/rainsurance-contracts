@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract Usdc is ERC20 {
 
-    string public constant NAME = "USD Coin - Fake";
+    string public constant NAME = "Fake USDC";
     string public constant SYMBOL = "USDC";
     uint8 public constant DECIMALS = 6;
 
